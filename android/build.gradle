@@ -1,12 +1,18 @@
-buildscript {
-  repositories {
-      google()
-      jcenter()
-  }
+def safeExtGet(prop, fallback) {
+    rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+}
 
-  dependencies {
-    classpath 'com.android.tools.build:gradle:3.5.1'
-  }
+buildscript {
+    repositories {
+        mavenCentral()
+        google()
+        jcenter()
+    }
+    def buildGradleVersion = ext.has('buildGradlePluginVersion') ? ext.get('buildGradlePluginVersion') : '3.5.1'
+
+    dependencies {
+        classpath "com.android.tools.build:gradle:$buildGradleVersion"
+    }
 }
 
 apply plugin: 'com.android.library'
@@ -25,14 +31,20 @@ android {
         versionCode 1
         versionName "1.0"
         ndk {
-            abiFilters "armeabi-v7a", "x86"
+            abiFilters  'armeabi-v7a','arm64-v8a','x86','x86_64'
         }
+
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_7
+        targetCompatibility JavaVersion.VERSION_1_7
     }
 }
 
 repositories {
-  google()
-  jcenter()
+    google()
+    jcenter()
+    mavenCentral()
 }
 
 dependencies {
