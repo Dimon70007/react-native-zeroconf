@@ -4,6 +4,7 @@ import android.content.Context;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
 import android.net.wifi.WifiManager;
+import android.util.Log;
 
 import com.facebook.react.bridge.NativeMap;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -81,7 +82,7 @@ public class ZeroconfModule extends ReactContextBaseJavaModule {
         this.stop();
 
         if (multicastLock == null) {
-            WifiManager wifi = (WifiManager) getReactApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            WifiManager wifi = (WifiManager) getReactApplicationContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
             multicastLock = wifi.createMulticastLock("multicastLock");
             multicastLock.setReferenceCounted(true);
             multicastLock.acquire();
@@ -201,15 +202,22 @@ public class ZeroconfModule extends ReactContextBaseJavaModule {
 
         WritableMap txtRecords = new WritableNativeMap();
 
-        Map<String, byte[]> attributes = serviceInfo.getAttributes();
-        for (String key : attributes.keySet()) {
-            try {
-                byte[] recordValue = attributes.get(key);
-                txtRecords.putString(String.format(Locale.getDefault(), "%s", key), String.format(Locale.getDefault(), "%s", recordValue != null ? new String(recordValue, "UTF_8") : ""));
-            } catch (UnsupportedEncodingException e) {
-                String error = "Failed to encode txtRecord: " + e;
-                sendEvent(getReactApplicationContext(), EVENT_ERROR, error);
+        Map<String, byte[]> attributes = null;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            attributes = serviceInfo.getAttributes();
+        }
+        if (attributes != null) {
+            for (String key : attributes.keySet()) {
+                try {
+                    byte[] recordValue = attributes.get(key);
+                    txtRecords.putString(String.format(Locale.getDefault(), "%s", key), String.format(Locale.getDefault(), "%s", recordValue != null ? new String(recordValue, "UTF_8") : ""));
+                } catch (UnsupportedEncodingException e) {
+                    String error = "Failed to encode txtRecord: " + e;
+                    sendEvent(getReactApplicationContext(), EVENT_ERROR, error);
+                }
             }
+        } else {
+            Log.e(getClass().getName(), "NsdServiceInfo.getAttributes method returns null, may be you are using android with API level less then 21");
         }
 
         service.putMap(KEY_SERVICE_TXT, txtRecords);
@@ -253,6 +261,7 @@ public class ZeroconfModule extends ReactContextBaseJavaModule {
         @Override
         public void onRegistrationFailed(NsdServiceInfo serviceInfo, int errorCode) {
             // Registration failed!  Put debugging code here to determine why.
+            Log.e(getClass().getName(), String.format("Error: %d. Failed to register NsdServiceInfo: %s", errorCode, serviceInfo));
         }
 
         @Override
@@ -266,6 +275,7 @@ public class ZeroconfModule extends ReactContextBaseJavaModule {
         @Override
         public void onUnregistrationFailed(NsdServiceInfo serviceInfo, int errorCode) {
             // Unregistration failed.  Put debugging code here to determine why.
+            Log.e(getClass().getName(), String.format("Error: %d. Failed to unregister NsdServiceInfo: %s", errorCode, serviceInfo));
         }
     }
 
